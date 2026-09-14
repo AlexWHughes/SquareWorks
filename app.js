@@ -20,6 +20,9 @@ const state = {
   eulaAccepted: false,
   monthlySquareLimit: 10,   // Starter plan. Generous, really.
   squaresUsedThisMonth: 0,  // survives relaunches; the quota never forgets
+  flashlightOwned: false,   // the FlashLight™ lighting add-on
+  lightMode: false,         // when true, squares are Lights (square ones)
+  autocadDialogShown: false,
 };
 
 // ---------------------------------------------------------------
@@ -73,7 +76,7 @@ const LOADING_MESSAGES = [
   "Indexing your fonts (why does this take so long? nobody knows)…",
   "Downloading content libraries you didn't ask for (11.2 GB)…",
   "Phoning home. Home is not answering…",
-  "Contacting Squaremetschek HQ (Berlin, on holiday)…",
+  "Contacting Right Angle Group HQ (they only take meetings at 90°)…",
   "Applying subscription guilt…",
   "Loading Squareware…",
 ];
@@ -101,7 +104,7 @@ function showEula() {
             </ul>
             <h4>3. TELEMETRY</h4>
             <ul>
-              <li>Squaremetschek may collect data about which greyed-out tools you hover over longingly.</li>
+              <li>Right Angle Group may collect data about which greyed-out tools you hover over longingly.</li>
               <li>This data is used to price the 2027 upgrade.</li>
             </ul>
             <h4>4. TERMINATION</h4>
@@ -900,6 +903,8 @@ const SQUAREY_LINES = {
   idle: [
     "You've stopped drawing. Is everything okay? Is it something I said?",
     "While you're thinking: have you considered pre-ordering SquareWorks 2027? No pressure. (Some pressure.)",
+    "Fun fact: AutoCAD users get to draw circles. But at what cost? (Their soul. Also $2,030/yr.)",
+    "Psst. Lights make everything better. Square lights make everything square AND better. FlashLight™, $1,299/yr.",
   ],
 };
 let squareyTimer = null;
@@ -971,6 +976,8 @@ function buildPalettes() {
     btn.title = tool.enabled ? tool.name + " (the only one you get)" : tool.name + " — unavailable";
     btn.onclick = () => {
       if (tool.enabled) {
+        state.lightMode = false;
+        $("toolbar-msg").textContent = "Square Tool: Click and drag to create a square. (All other geometry sold separately.)";
         toast("Rectangle Tool selected. It draws squares. We renamed nothing.");
       } else {
         toast(pick(GREYED_EXCUSES)(tool.name));
@@ -981,6 +988,26 @@ function buildPalettes() {
 
   const list = $("toolset-list");
   list.innerHTML = "";
+
+  // FlashLight™: the only Tool Set with a pulse (it's sales)
+  const flRow = document.createElement("div");
+  flRow.className = "toolset-row enabled";
+  flRow.innerHTML = state.flashlightOwned
+    ? `<span class="ts-icon">💡</span><span>Lighting — FlashLight™ (owned)</span>`
+    : `<span class="ts-icon">💡</span><span>Lighting — FlashLight™ ($1,299/yr)</span>`;
+  flRow.onclick = () => {
+    if (!state.flashlightOwned) {
+      showFlashlightUpsell();
+      return;
+    }
+    state.lightMode = !state.lightMode;
+    $("toolbar-msg").textContent = state.lightMode
+      ? "Square Light Tool: Click and drag to hang a light. Beam angle: 90°, non-negotiable."
+      : "Square Tool: Click and drag to create a square. (All other geometry sold separately.)";
+    toast(state.lightMode ? "Square Light Tool selected. Illumination: square." : "Back to regular squares. The darkness returns.");
+  };
+  list.appendChild(flRow);
+
   for (const [icon, name] of TOOL_SETS) {
     const row = document.createElement("div");
     row.className = "toolset-row";
@@ -1010,6 +1037,7 @@ const MENUS = {
     { sep: true },
     { label: "Preferences…", shortcut: "⌘,", enabled: false },
     { label: "Check for Updates…", enabled: true, action: servicePackPromise },
+    { label: "Our Feelings About AutoCAD…", enabled: true, action: showAutocadJealousy },
     { sep: true },
     { label: "Quit SquareWorks", shortcut: "⌘Q", enabled: true, action: quitCrash },
   ],
@@ -1062,6 +1090,7 @@ const MENUS = {
     { label: "All 312 tools", enabled: false },
     { sep: true },
     { label: "Square AI (Beta) ✨", enabled: true, action: runSquareAI },
+    { label: "FlashLight™ Lighting Add-on 💡", enabled: true, action: () => state.flashlightOwned ? toast("You already own FlashLight™. Thank you. The billing system remembers you fondly.") : showFlashlightUpsell() },
     { label: "Report a Bug", enabled: true, action: () => toast("Bug reported. It has been assigned to Service Pack " + (state.servicePack + 1) + ".") },
   ],
   text: [
@@ -1133,6 +1162,95 @@ function setupMenus() {
     hide(dropdown);
     document.querySelectorAll(".menu-item").forEach((m) => m.classList.remove("open"));
   }
+}
+
+// ---------------------------------------------------------------
+// FlashLight™ — professional lighting design (square lighting design)
+// ---------------------------------------------------------------
+function showFlashlightUpsell() {
+  showDialog(`
+    <div class="dlg-mac" style="width: 520px">
+      <div class="dlg-head">
+        <div class="dlg-icon" style="background: linear-gradient(135deg, #f6c343, #e8860a)">💡</div>
+        <div class="dlg-text">
+          <h3>SquareWorks FlashLight™ — Lighting Design Add-on</h3>
+          <p>Professional lighting design for the entertainment industry, provided the
+             entertainment is squares.</p>
+          <p>• Draw lights <b>(square)</b> &nbsp;• Focus beams <b>(square)</b> &nbsp;• Shadows <b>(square, obviously)</b><br>
+             • Gobo library: <b>1 gobo</b> (it's a square) &nbsp;• Beam angle: <b>90°</b> (a right angle — the only correct angle)</p>
+          <p>Trusted by lighting designers on all 4 sides of the industry.</p>
+          <p class="fine">FlashLight™ requires SquareWorks 2026 (crashes sold separately, included).
+             Round lights ("circles") remain science fiction.</p>
+        </div>
+      </div>
+      <div class="dlg-buttons">
+        <button class="btn" id="fl-no">I work in darkness</button>
+        <button class="btn primary" id="fl-buy">Buy FlashLight™ — $1,299/yr</button>
+      </div>
+    </div>`);
+  $("fl-no").onclick = () => {
+    closeDialog();
+    toast("Understood. The squares will remain unlit, like our roadmap.", 4500);
+  };
+  $("fl-buy").onclick = () => {
+    state.flashlightOwned = true;
+    state.lightMode = true;
+    showDialog(`
+      <div class="dlg-mac">
+        <div class="dlg-head">
+          <div class="dlg-icon sales">✓</div>
+          <div class="dlg-text">
+            <h3>Purchase complete! That took 0.3 seconds.</h3>
+            <p>Interesting how the billing system never crashes, isn't it. Fourteen years without
+               a single outage. We don't like to talk about why the B-team maintains the drawing engine.</p>
+            <p>The <b>Square Light Tool</b> is now active. Click and drag on the canvas to hang a light.
+               It will be square. It will always be square.</p>
+          </div>
+        </div>
+        <div class="dlg-buttons"><button class="btn primary" id="fl-done">Let there be (square) light</button></div>
+      </div>`);
+    $("fl-done").onclick = () => {
+      closeDialog();
+      buildPalettes();
+      $("toolbar-msg").textContent = "Square Light Tool: Click and drag to hang a light. Beam angle: 90°, non-negotiable.";
+      toast("FlashLight™ activated. Lights count against your monthly square quota. (Read the fine print. Or don't; it's the same either way.)", 6000);
+    };
+  };
+}
+
+// ---------------------------------------------------------------
+// AutoCAD: we're fine. Everything is fine.
+// ---------------------------------------------------------------
+function showAutocadJealousy() {
+  state.autocadDialogShown = true;
+  showDialog(`
+    <div class="dlg-mac" style="width: 500px">
+      <div class="dlg-head">
+        <div class="dlg-icon warn">👀</div>
+        <div class="dlg-text">
+          <h3>Competitor software detected.</h3>
+          <p>We noticed <b>AutoCAD</b> is installed on this machine. That's fine. We're fine.
+             This dialog is not about that.</p>
+          <p>Sure, AutoCAD has "stability", "market share", and "the ability to draw circles".
+             But ask yourself: has AutoCAD ever promised you a service pack with this much
+             <i>conviction</i>? Has AutoCAD ever needed you like we do?</p>
+          <p>AutoCAD doesn't even have a Squarey.</p>
+          <p class="fine">This dialog will reappear whenever we sense you drifting. We always sense it.</p>
+        </div>
+      </div>
+      <div class="dlg-buttons">
+        <button class="btn" id="ac-uninstall">Uninstall AutoCAD (for SquareWorks' feelings)</button>
+        <button class="btn primary" id="ac-never">I'd never leave</button>
+      </div>
+    </div>`);
+  $("ac-never").onclick = () => {
+    closeDialog();
+    toast("We know you're lying. We saw your browser history. But thank you for saying it.", 5000);
+  };
+  $("ac-uninstall").onclick = () => {
+    closeDialog();
+    toast("Thank you. SquareWorks feels 8% more stable already. (Emotionally. Not technically.)", 5000);
+  };
 }
 
 // ---------------------------------------------------------------
@@ -1312,23 +1430,48 @@ function redraw() {
   ctx.fillText("Drawn in SquareWorks 2026", canvas.width - margin - 142, canvas.height - margin - 14);
 
   for (const sq of squares) {
-    ctx.fillStyle = "rgba(255,255,255,0.9)";
-    ctx.fillRect(sq.x, sq.y, sq.size, sq.size);
-    ctx.strokeStyle = sq === selectedSquare ? "#2456a4" : "#111";
-    ctx.lineWidth = sq === selectedSquare ? 2 : 1.5;
-    ctx.strokeRect(sq.x, sq.y, sq.size, sq.size);
-    ctx.lineWidth = 1;
+    if (sq.isLight) {
+      // A square pool of light. FlashLight™: worth every dollar.
+      const cx = sq.x + sq.size / 2;
+      const cy = sq.y + sq.size / 2;
+      const glow = ctx.createRadialGradient(cx, cy, sq.size * 0.1, cx, cy, sq.size * 1.1);
+      glow.addColorStop(0, "rgba(255, 214, 90, 0.45)");
+      glow.addColorStop(1, "rgba(255, 214, 90, 0)");
+      ctx.fillStyle = glow;
+      ctx.fillRect(cx - sq.size * 1.2, cy - sq.size * 1.2, sq.size * 2.4, sq.size * 2.4);
+
+      ctx.fillStyle = "rgba(255, 246, 200, 0.95)";
+      ctx.fillRect(sq.x, sq.y, sq.size, sq.size);
+      ctx.strokeStyle = sq === selectedSquare ? "#2456a4" : "#c8860a";
+      ctx.lineWidth = sq === selectedSquare ? 2 : 1.5;
+      ctx.strokeRect(sq.x, sq.y, sq.size, sq.size);
+      // fixture cross, like a real lighting symbol, but square-certified
+      ctx.beginPath();
+      ctx.moveTo(sq.x, sq.y); ctx.lineTo(sq.x + sq.size, sq.y + sq.size);
+      ctx.moveTo(sq.x + sq.size, sq.y); ctx.lineTo(sq.x, sq.y + sq.size);
+      ctx.strokeStyle = "#c8860a";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.fillRect(sq.x, sq.y, sq.size, sq.size);
+      ctx.strokeStyle = sq === selectedSquare ? "#2456a4" : "#111";
+      ctx.lineWidth = sq === selectedSquare ? 2 : 1.5;
+      ctx.strokeRect(sq.x, sq.y, sq.size, sq.size);
+      ctx.lineWidth = 1;
+    }
   }
 
   if (drag) {
     const { x, y, size } = normalizeDrag(drag);
     ctx.setLineDash([5, 4]);
-    ctx.strokeStyle = "#2456a4";
+    ctx.strokeStyle = state.lightMode ? "#c8860a" : "#2456a4";
     ctx.strokeRect(x, y, size, size);
     ctx.setLineDash([]);
-    ctx.fillStyle = "#2456a4";
+    ctx.fillStyle = state.lightMode ? "#c8860a" : "#2456a4";
     ctx.font = "11px sans-serif";
-    ctx.fillText(`${Math.round(size)} × ${Math.round(size)} (perfect square)`, x + 4, y - 6);
+    const label = state.lightMode ? "(perfect square, luminous)" : "(perfect square)";
+    ctx.fillText(`${Math.round(size)} × ${Math.round(size)} ${label}`, x + 4, y - 6);
   }
 }
 
@@ -1380,6 +1523,7 @@ canvas.addEventListener("mouseup", () => {
     return;
   }
 
+  if (state.lightMode) sq.isLight = true;
   squares.push(sq);
   selectedSquare = sq;
   state.squaresDrawn++;
@@ -1389,6 +1533,10 @@ canvas.addEventListener("mouseup", () => {
   updateAutosaveStatus();
   updateObjectInfo();
   redraw();
+
+  if (sq.isLight && squares.filter((s) => s.isLight).length === 1) {
+    setTimeout(() => toast("Beautiful. A wash light that only washes square areas. The actors will adapt.", 5000), 400);
+  }
 
   if (state.squaresUsedThisMonth >= state.monthlySquareLimit) {
     setTimeout(showPaywall, 500);
@@ -1478,6 +1626,20 @@ function updateObjectInfo() {
     return;
   }
   const s = selectedSquare;
+  if (s.isLight) {
+    body.innerHTML = `
+      <div class="oi-row"><span class="oi-label">Class:</span><span class="oi-val">Lighting-1</span></div>
+      <div class="oi-row"><span class="oi-label">Type:</span><span class="oi-val">Light (Square)</span></div>
+      <div class="oi-row"><span class="oi-label">Fixture:</span><span class="oi-val">FlashLight™ SQ-4000</span></div>
+      <div class="oi-row"><span class="oi-label">Beam Angle:</span><span class="oi-val">90° 🔒</span></div>
+      <div class="oi-row"><span class="oi-label">Beam Shape:</span><span class="oi-val">Square 🔒</span></div>
+      <div class="oi-row"><span class="oi-label">Gobo:</span><span class="oi-val">Square (1 of 1)</span></div>
+      <div class="oi-row"><span class="oi-label">Lumens:</span><span class="oi-val">4 (one per corner)</span></div>
+      <div class="oi-row"><span class="oi-label">DMX Address:</span><span class="oi-val">4</span></div>
+      <div class="oi-note">Beam angle locked at 90°: the right angle. Other angles are wrong angles.
+      Round beam profiles ("circles") are on the roadmap for FlashLight™ 2031, pending physics.</div>`;
+    return;
+  }
   body.innerHTML = `
     <div class="oi-row"><span class="oi-label">Class:</span><span class="oi-val">Square-1</span></div>
     <div class="oi-row"><span class="oi-label">Shape:</span><span class="oi-val">Square</span></div>
@@ -1541,6 +1703,12 @@ function openApp() {
   setTimeout(() => {
     if (state.appOpen && state.squaresDrawn < 2) showSquarey("idle");
   }, 25000);
+
+  // SquareWorks notices AutoCAD and needs to talk about it
+  setTimeout(() => {
+    if (!state.appOpen || state.autocadDialogShown || !dialogLayer.classList.contains("hidden")) return;
+    showAutocadJealousy();
+  }, 45000);
 
   // Subscription re-validation: briefly stops the world to confirm you still pay
   setTimeout(async () => {
