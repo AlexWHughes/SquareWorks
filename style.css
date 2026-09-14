@@ -129,8 +129,9 @@ html, body {
 .menu-item:hover, .menu-item.open { background: var(--accent); color: #fff; }
 .apple-menu { font-size: 14px; }
 .menubar-title {
-  position: absolute; left: 50%; transform: translateX(-50%);
+  margin-left: auto;
   font-size: 12px; color: #555; pointer-events: none;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 .menu-dropdown {
@@ -490,6 +491,155 @@ html, body {
   box-shadow: 0 2px 8px rgba(0,0,0,.4);
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ======================= SQUAREY ======================= */
+.squarey {
+  position: fixed;
+  right: 250px;
+  bottom: 40px;
+  z-index: 400;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  animation: squarey-in .3s ease-out;
+}
+@keyframes squarey-in { from { transform: translateY(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.squarey-bubble {
+  background: #fffbe8;
+  border: 1px solid #d9c86a;
+  border-radius: 10px;
+  padding: 12px 14px;
+  max-width: 280px;
+  font-size: 12px;
+  line-height: 1.5;
+  box-shadow: 0 8px 24px rgba(0,0,0,.25);
+  position: relative;
+}
+.squarey-bubble::after {
+  content: "";
+  position: absolute;
+  bottom: -8px; right: 24px;
+  border: 8px solid transparent;
+  border-top-color: #d9c86a;
+  border-bottom: none;
+}
+.squarey-actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 10px; }
+.btn.tiny { font-size: 10.5px; padding: 3px 10px; }
+
+.squarey-face {
+  width: 52px; height: 52px;
+  background: #fff;
+  border: 3px solid #111;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  animation: squarey-bounce 2.2s ease-in-out infinite;
+  box-shadow: 0 6px 16px rgba(0,0,0,.3);
+}
+@keyframes squarey-bounce { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-5px) rotate(2deg); } }
+.squarey-eyes { display: flex; gap: 10px; }
+.squarey-eyes span { width: 6px; height: 6px; background: #111; border-radius: 0; animation: squarey-blink 3.5s infinite; }
+@keyframes squarey-blink { 0%, 94%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.1); } }
+.squarey-mouth { width: 16px; height: 3px; background: #111; }
+
+/* ======================= EULA ======================= */
+.eula-scroll {
+  height: 180px;
+  overflow-y: scroll;
+  border: 1px solid #c8c8c8;
+  background: #fff;
+  border-radius: 6px;
+  padding: 12px 14px;
+  font-size: 11px;
+  line-height: 1.6;
+  margin-top: 12px;
+  color: #333;
+}
+.eula-scroll ul { padding-left: 18px; }
+.eula-scroll li { margin-bottom: 6px; }
+.eula-scroll h4 { margin: 10px 0 6px; font-size: 11px; }
+
+/* ======================= SURVEY ======================= */
+.nps-row { display: flex; gap: 5px; margin-top: 14px; justify-content: center; }
+.nps-btn {
+  width: 30px; height: 30px;
+  border: 1px solid #c0c0c0;
+  border-radius: 6px;
+  background: #f4f4f4;
+  color: #c0c0c0;
+  font-size: 12.5px;
+  cursor: not-allowed;
+  display: flex; align-items: center; justify-content: center;
+}
+.nps-btn.enabled {
+  background: linear-gradient(#3d7de0, var(--accent));
+  color: #fff;
+  border-color: #1c4487;
+  cursor: pointer;
+  font-weight: 700;
+  box-shadow: 0 0 0 3px rgba(61,125,224,.25);
+}
+.nps-labels { display: flex; justify-content: space-between; font-size: 9.5px; color: #999; margin-top: 5px; padding: 0 4px; }
+
+/* ======================= UPSELL COUNTDOWN ======================= */
+.upsell-countdown {
+  margin: 0 34px;
+  padding: 8px 14px;
+  background: rgba(232,76,76,.12);
+  border: 1px solid rgba(232,76,76,.45);
+  border-radius: 8px;
+  font-size: 12px;
+  color: #ff9e9e;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.upsell-countdown .clock { font-family: "SF Mono", Menlo, monospace; font-weight: 700; color: #ff6b6b; font-size: 15px; }
+.upsell-countdown .extended { font-size: 10px; color: #d98a8a; font-style: italic; }
+
+/* ======================= COOKIE BANNER ======================= */
+.cookie-banner {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: #1c1c22;
+  color: #d8d8de;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 12px;
+  line-height: 1.45;
+  z-index: 600;
+  box-shadow: 0 -6px 24px rgba(0,0,0,.4);
+}
+.cookie-buttons { display: flex; gap: 8px; flex-shrink: 0; }
+
+/* ======================= KERNEL PANIC ======================= */
+.dlg-panic {
+  width: 100vw;
+  height: 100vh;
+  background: rgba(8, 10, 16, .97);
+  color: #e8e8ec;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  font-family: "Lucida Grande", -apple-system, sans-serif;
+}
+.panic-text { max-width: 560px; display: flex; flex-direction: column; gap: 14px; }
+.panic-text .panic-en { font-size: 20px; font-weight: 700; }
+.panic-text p { font-size: 13px; color: #b8b8c2; line-height: 1.5; }
+.panic-text .panic-tech {
+  font-family: "SF Mono", Menlo, monospace;
+  font-size: 10.5px;
+  color: #6a6a78;
+  margin-top: 10px;
+}
 
 /* frozen state: everything stops responding */
 .frozen { pointer-events: none; filter: saturate(.85); }

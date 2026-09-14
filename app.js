@@ -11,9 +11,15 @@ const state = {
   launchAttempt: 0,        // how many times we've tried to boot
   servicePack: 2,          // current installed SP; promises start at SP3
   upsellShown: false,
+  upsellViews: 0,          // each decline lowers the price by $1
   squaresDrawn: 0,
   crashAfterSquares: 0,    // in-app crash trigger
   appOpen: false,
+  crashCount: 0,
+  surveyShown: false,
+  eulaAccepted: false,
+  monthlySquareLimit: 10,   // Starter plan. Generous, really.
+  squaresUsedThisMonth: 0,  // survives relaunches; the quota never forgets
 };
 
 // ---------------------------------------------------------------
@@ -58,12 +64,77 @@ const LOADING_MESSAGES = [
   "Initializing Square Engine…",
   "Verifying all four corners…",
   "Checking license with the mothership…",
+  "Checking license again (the mothership forgot)…",
   "Loading 14,000 tool icons you can't use…",
+  "Greying out 311 of 312 tools…",
   "Reticulating right angles…",
   "Deprecating features you paid for…",
+  "Migrating your workspace settings (deleting them)…",
+  "Indexing your fonts (why does this take so long? nobody knows)…",
+  "Downloading content libraries you didn't ask for (11.2 GB)…",
+  "Phoning home. Home is not answering…",
   "Contacting Squaremetschek HQ (Berlin, on holiday)…",
+  "Applying subscription guilt…",
   "Loading Squareware…",
 ];
+
+function showEula() {
+  showDialog(`
+    <div class="dlg-mac" style="width: 520px">
+      <div class="dlg-head">
+        <div class="dlg-icon">§</div>
+        <div class="dlg-text" style="flex:1">
+          <h3>SquareWorks End User License Agreement</h3>
+          <p>Version 2026.2 · 400 pages (abridged below to the parts our lawyers are proudest of)</p>
+          <div class="eula-scroll">
+            <h4>1. THE SOFTWARE</h4>
+            <ul>
+              <li>The software is provided "as is". As you will discover, "is" is generous.</li>
+              <li>"Uptime" is defined in Appendix K as "the splash screen".</li>
+              <li>Any squares you draw belong to you. Any crashes also belong to you.</li>
+            </ul>
+            <h4>2. YOUR OBLIGATIONS</h4>
+            <ul>
+              <li>You agree to describe the software as "powerful" at industry events.</li>
+              <li>You waive your right to rectangles, class actions, and refunds — in that order.</li>
+              <li>When the software crashes, you agree to say "that's weird, it's never done that before", even to yourself, even alone.</li>
+            </ul>
+            <h4>3. TELEMETRY</h4>
+            <ul>
+              <li>Squaremetschek may collect data about which greyed-out tools you hover over longingly.</li>
+              <li>This data is used to price the 2027 upgrade.</li>
+            </ul>
+            <h4>4. TERMINATION</h4>
+            <ul>
+              <li>You may terminate this agreement at any time. The subscription, however, is eternal.</li>
+              <li>Clause 4 survives termination. Clauses 1–3 survive you.</li>
+              <li>The remaining 397 pages are available at www.squareworks.pro/eula, a page that also crashes.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="dlg-buttons">
+        <button class="btn" id="eula-disagree">Disagree</button>
+        <button class="btn primary" id="eula-agree">Agree</button>
+      </div>
+    </div>`);
+  $("eula-agree").onclick = () => { state.eulaAccepted = true; bootSequence(); };
+  $("eula-disagree").onclick = () => {
+    showDialog(`
+      <div class="dlg-mac">
+        <div class="dlg-head">
+          <div class="dlg-icon">§</div>
+          <div class="dlg-text">
+            <h3>Disagreement received.</h3>
+            <p>Your disagreement has been logged as feedback, categorized as "enthusiasm",
+               and converted to an Agree. The EULA accepts <i>you</i>.</p>
+          </div>
+        </div>
+        <div class="dlg-buttons"><button class="btn primary" id="eula-forced">I see how it is</button></div>
+      </div>`);
+    $("eula-forced").onclick = () => { state.eulaAccepted = true; bootSequence(); };
+  };
+}
 
 async function bootSequence() {
   state.launchAttempt++;
@@ -74,9 +145,11 @@ async function bootSequence() {
   stopBeachball();
 
   const status = $("splash-status");
-  for (const msg of LOADING_MESSAGES) {
+  // A fresh random sample of miseries each boot, always ending on Squareware
+  const sample = [...LOADING_MESSAGES.slice(0, -1)].sort(() => Math.random() - 0.5).slice(0, 6);
+  for (const msg of sample) {
     status.textContent = msg;
-    await sleep(rand(350, 800));
+    await sleep(rand(350, 750));
   }
 
   // Always freezes on "Loading Squareware…" for dramatic effect
@@ -129,12 +202,23 @@ function stopBeachball() {
 // ---------------------------------------------------------------
 // Crash dialogs (rotating flavours)
 // ---------------------------------------------------------------
-const CRASH_FLAVOURS = ["supportLibrary", "quitUnexpectedly", "serverBusy", "notResponding"];
-let crashIndex = 0;
+const CRASH_FLAVOURS = [
+  "supportLibrary", "quitUnexpectedly", "serverBusy", "forumThread",
+  "notResponding", "kernelPanic", "gpuBlacklist", "licenseParadox", "outOfMemory",
+];
+
+// Crashes are dealt from a shuffled deck so every playthrough suffers differently.
+let crashDeck = [];
+function nextCrashFlavour() {
+  if (crashDeck.length === 0) {
+    crashDeck = [...CRASH_FLAVOURS].sort(() => Math.random() - 0.5);
+  }
+  return crashDeck.pop();
+}
 
 function crash() {
-  const flavour = CRASH_FLAVOURS[crashIndex % CRASH_FLAVOURS.length];
-  crashIndex++;
+  state.crashCount++;
+  const flavour = nextCrashFlavour();
   switch (flavour) {
     case "supportLibrary":
       showCrashSupportLibrary();
@@ -145,14 +229,194 @@ function crash() {
     case "serverBusy":
       showCrashServerBusy();
       break;
+    case "forumThread":
+      showCrashForumThread();
+      break;
     case "notResponding":
       showCrashNotResponding();
+      break;
+    case "kernelPanic":
+      showCrashKernelPanic();
+      break;
+    case "gpuBlacklist":
+      showCrashGpuBlacklist();
+      break;
+    case "licenseParadox":
+      showCrashLicenseParadox();
+      break;
+    case "outOfMemory":
+      showCrashOutOfMemory();
       break;
     default: {
       const _exhaustive = flavour;
       throw new Error(`Unhandled crash flavour: ${_exhaustive}`);
     }
   }
+}
+
+function showCrashKernelPanic() {
+  showDialog(`
+    <div class="dlg-panic">
+      <div class="panic-text">
+        <div class="panic-en">You need to restart SquareWorks.</div>
+        <p>Sie müssen SquareWorks neu starten. Wir entschuldigen uns. (Nur ein bisschen.)</p>
+        <p>Vous devez redémarrer SquareWorks. C'est la vie.</p>
+        <p>Debe reiniciar SquareWorks. El cuadrado no tiene la culpa.</p>
+        <p>SquareWorksを再起動する必要があります。四角は悪くありません。</p>
+        <div class="panic-tech">panic(cpu 0 caller 0x4C4F4C): "square_t exceeded maximum corners (expected: 4, found: 5)"<br>
+        Backtrace: draw_square → validate_corners → count_corners → recount_corners → panic_politely</div>
+      </div>
+      <button class="btn primary" id="panic-restart">Restart SquareWorks</button>
+    </div>`);
+  $("panic-restart").onclick = servicePackPromise;
+}
+
+function showCrashGpuBlacklist() {
+  showDialog(`
+    <div class="dlg-mac">
+      <div class="dlg-head">
+        <div class="dlg-icon warn">⚠︎</div>
+        <div class="dlg-text">
+          <h3>Graphics initialization failed.</h3>
+          <p>Your graphics card has been added to the SquareWorks incompatibility list,
+             effective 40 seconds ago, specifically because you tried to use it.</p>
+          <p>SquareWorks 2026 officially supports the following graphics cards:</p>
+          <p style="padding: 6px 12px; background: #fff; border: 1px solid #ddd; border-radius: 4px; color: #999; font-style: italic;">
+             (this list is empty)</p>
+        </div>
+      </div>
+      <div class="dlg-buttons">
+        <button class="btn" id="gpu-software">Use Software Rendering</button>
+        <button class="btn primary" id="gpu-ok">OK</button>
+      </div>
+    </div>`);
+  $("gpu-ok").onclick = servicePackPromise;
+  $("gpu-software").onclick = () => {
+    showDialog(`
+      <div class="dlg-mac">
+        <div class="dlg-head">
+          <div class="dlg-icon warn">⚠︎</div>
+          <div class="dlg-text">
+            <h3>Software rendering enabled.</h3>
+            <p>Estimated time to render one square: <b>11 minutes</b>.</p>
+            <p>Estimated time until the software renderer crashes: <b>4 minutes</b>.</p>
+            <p>You do the math. (The built-in calculator also crashes.)</p>
+          </div>
+        </div>
+        <div class="dlg-buttons"><button class="btn primary" id="gpu-ok2">Never mind</button></div>
+      </div>`);
+    $("gpu-ok2").onclick = servicePackPromise;
+  };
+}
+
+function showCrashLicenseParadox() {
+  showDialog(`
+    <div class="dlg-mac">
+      <div class="dlg-head">
+        <div class="dlg-icon">🔑</div>
+        <div class="dlg-text">
+          <h3>License validation error.</h3>
+          <p>Your license is <b>valid</b>. Unfortunately, the license validator was not
+             expecting that, and has crashed from the shock.</p>
+          <p>Our records show most launches come from expired trials, so a genuinely paid,
+             current license triggers an unhandled code path we call <i>"the optimist's branch"</i>.</p>
+          <p class="fine">Error code: LICENSE_TOO_VALID (0x0000PAID)</p>
+        </div>
+      </div>
+      <div class="dlg-buttons">
+        <button class="btn" id="lic-unpay">Temporarily Unpay</button>
+        <button class="btn primary" id="lic-ok">OK</button>
+      </div>
+    </div>`);
+  $("lic-ok").onclick = servicePackPromise;
+  $("lic-unpay").onclick = () => {
+    showDialog(`
+      <div class="dlg-mac">
+        <div class="dlg-head">
+          <div class="dlg-icon">🔑</div>
+          <div class="dlg-text">
+            <h3>We cannot unpay you.</h3>
+            <p>Money flows in one direction here. It's in the EULA. Section 4. The one that survives you.</p>
+          </div>
+        </div>
+        <div class="dlg-buttons"><button class="btn primary" id="lic-ok2">Of course</button></div>
+      </div>`);
+    $("lic-ok2").onclick = servicePackPromise;
+  };
+}
+
+function showCrashOutOfMemory() {
+  showDialog(`
+    <div class="dlg-mac">
+      <div class="dlg-head">
+        <div class="dlg-icon warn">⚠︎</div>
+        <div class="dlg-text">
+          <h3>Out of memory.</h3>
+          <p>SquareWorks ran out of memory while loading the memory manager.</p>
+          <p>Current memory usage: <b>63.9 GB</b>. Squares in document: <b>0</b>.
+             We are as puzzled as you are, but louder about it in our standup meetings.</p>
+          <p class="fine">Tip: closing other applications will not help, but it gives you something to do.</p>
+        </div>
+      </div>
+      <div class="dlg-buttons">
+        <button class="btn" id="mem-buy">Buy More RAM</button>
+        <button class="btn primary" id="mem-ok">OK</button>
+      </div>
+    </div>`);
+  $("mem-ok").onclick = servicePackPromise;
+  $("mem-buy").onclick = () => {
+    showDialog(`
+      <div class="dlg-mac">
+        <div class="dlg-head">
+          <div class="dlg-icon sales">♥</div>
+          <div class="dlg-text">
+            <h3>Great instinct!</h3>
+            <p>Unfortunately SquareWorks expands to fill all available memory, plus 4%.
+               It's not a leak; it's ambition.</p>
+          </div>
+        </div>
+        <div class="dlg-buttons"><button class="btn primary" id="mem-ok2">Ambition. Right.</button></div>
+      </div>`);
+    $("mem-ok2").onclick = servicePackPromise;
+  };
+}
+
+function showCrashForumThread() {
+  showDialog(`
+    <div class="dlg-mac" style="width: 500px">
+      <div class="dlg-head">
+        <div class="dlg-icon warn">⚠︎</div>
+        <div class="dlg-text">
+          <h3>SquareWorks encountered a problem.</h3>
+          <p>Good news: this <i>exact</i> crash was discussed on the SquareWorks Community Forum in
+             <b>September 2014</b>. The thread has <b>847 replies</b> spanning 11 years.</p>
+          <p>The last reply, posted by user <b>ArchDude72</b>, says:
+             <i>"Fixed it! Nevermind."</i> — with no further detail. He has not logged in since.</p>
+          <p class="fine">Thread status: [SOLVED] · Marked as solved by a moderator who did not read it ·
+             3 users found this helpful (they did not)</p>
+        </div>
+      </div>
+      <div class="dlg-buttons">
+        <button class="btn" id="forum-search">Search ArchDude72's other posts</button>
+        <button class="btn primary" id="forum-ok">Curse quietly</button>
+      </div>
+    </div>`);
+  $("forum-ok").onclick = servicePackPromise;
+  $("forum-search").onclick = () => {
+    showDialog(`
+      <div class="dlg-mac">
+        <div class="dlg-head">
+          <div class="dlg-icon warn">⚠︎</div>
+          <div class="dlg-text">
+            <h3>ArchDude72's post history</h3>
+            <p>2,341 posts. Every single one ends with <i>"Fixed it! Nevermind."</i></p>
+            <p>He is either the greatest troubleshooter of his generation, or a warning.</p>
+          </div>
+        </div>
+        <div class="dlg-buttons"><button class="btn primary" id="forum-ok2">A warning. Definitely a warning.</button></div>
+      </div>`);
+    $("forum-ok2").onclick = servicePackPromise;
+  };
 }
 
 function showCrashSupportLibrary() {
@@ -319,7 +583,58 @@ const SP_PROMISES = [
   },
 ];
 
+function showSurvey() {
+  state.surveyShown = true;
+  const npsButtons = Array.from({ length: 11 }, (_, i) =>
+    `<div class="nps-btn ${i === 10 ? "enabled" : ""}" data-score="${i}"
+          title="${i === 10 ? "Submit" : "This score is unavailable in your region"}">${i}</div>`
+  ).join("");
+  showDialog(`
+    <div class="dlg-mac" style="width: 500px">
+      <div class="dlg-head">
+        <div class="dlg-icon sales">★</div>
+        <div class="dlg-text" style="flex:1">
+          <h3>Quick survey! (mandatory)</h3>
+          <p>Before we fix your crash, help us understand how much you love us.</p>
+          <p><b>How likely are you to recommend SquareWorks to a colleague?</b></p>
+          <div class="nps-row">${npsButtons}</div>
+          <div class="nps-labels"><span>Not likely (unavailable)</span><span>Extremely likely</span></div>
+          <p class="fine">Scores 0–9 are temporarily disabled while we investigate why anyone would choose them.</p>
+        </div>
+      </div>
+    </div>`);
+  dialogBox.querySelectorAll(".nps-btn").forEach((btn) => {
+    btn.onclick = () => {
+      if (!btn.classList.contains("enabled")) {
+        btn.style.transform = "translateX(3px)";
+        setTimeout(() => (btn.style.transform = ""), 120);
+        return;
+      }
+      showDialog(`
+        <div class="dlg-mac">
+          <div class="dlg-head">
+            <div class="dlg-icon sales">★</div>
+            <div class="dlg-text">
+              <h3>Thank you for the 10/10!</h3>
+              <p>Your review has been published to our website:</p>
+              <p><b>www.squareworks.pro/reviews/definitely-real</b></p>
+              <p><i>"Incredible software. The crashes have made me a more patient person.
+                 10/10."</i> — <b>You</b>, apparently</p>
+            </div>
+          </div>
+          <div class="dlg-buttons"><button class="btn primary" id="survey-done">That's not what I— fine</button></div>
+        </div>`);
+      $("survey-done").onclick = servicePackPromise;
+    };
+  });
+}
+
 function servicePackPromise() {
+  // Nothing between you and a fix except market research
+  if (state.crashCount >= 2 && !state.surveyShown) {
+    showSurvey();
+    return;
+  }
   const promiseIndex = state.servicePack - 2; // SP2 installed → promise index 0 (SP3)
   if (promiseIndex >= SP_PROMISES.length) {
     // Out of service packs to promise. Time to sell 2027.
@@ -413,8 +728,17 @@ async function installServicePack(spNumber) {
 // ---------------------------------------------------------------
 // The 2027 upsell
 // ---------------------------------------------------------------
+let upsellTimer = null;
+
 function showUpsell() {
   state.upsellShown = true;
+  state.upsellViews++;
+  const price = 3499 - (state.upsellViews - 1);
+  const priceNote = state.upsellViews > 1
+    ? `<span class="was">$${(price + 1).toLocaleString()}</span>
+       <span style="font-size:11px; color:#8fb4ee">— we lowered it by $1. That's how much you mean to us.</span>`
+    : `<span class="was">$3,498</span>`;
+
   showDialog(`
     <div class="dlg-upsell">
       <div class="upsell-hero">
@@ -424,7 +748,11 @@ function showUpsell() {
         for SquareWorks 2026 is for you to purchase SquareWorks 2027. This was also their conclusion for 2025,
         2024, and every year since 1985.</p>
       </div>
-      <div class="upsell-features">
+      <div class="upsell-countdown">
+        ⏰ Limited-time launch pricing ends in <span class="clock" id="upsell-clock">10:00</span>
+        <span class="extended" id="upsell-extended"></span>
+      </div>
+      <div class="upsell-features" style="margin-top: 14px">
         <div class="upsell-feature"><span class="tick">✓</span> Up to 37% fewer crashes*</div>
         <div class="upsell-feature"><span class="tick">✓</span> Rectangles™ (Pro tier and above)</div>
         <div class="upsell-feature"><span class="tick">✓</span> AI-powered Square Suggestions</div>
@@ -433,7 +761,7 @@ function showUpsell() {
         <div class="upsell-feature"><span class="tick">✓</span> New splash screen to crash on</div>
       </div>
       <div class="upsell-price">
-        From <span class="amount">$3,499</span><span class="was">$3,498</span> / year
+        From <span class="amount">$${price.toLocaleString()}</span>${priceNote} / year
         &nbsp;·&nbsp; billed annually, forever, even after death
       </div>
       <div class="upsell-buttons">
@@ -442,11 +770,30 @@ function showUpsell() {
       </div>
       <div class="upsell-fine">*Compared to SquareWorks 2019. Crash reduction achieved primarily by removing features.
       Rectangles™ require Rectangle Add-on Pack ($499/yr). AI Square Suggestions suggests squares. All sales final.
-      SquareWorks 2027 system requirements: a computer purchased in 2028.</div>
+      SquareWorks 2027 system requirements: a computer purchased in 2028. Countdown timer is decorative and legally
+      non-binding; the "limited-time" price has been limited since 2019.</div>
     </div>`);
 
-  $("upsell-buy").onclick = showCheckoutFailure;
+  // The world's least honest countdown: ticks down, panics, resets.
+  let secondsLeft = 600;
+  let elapsed = 0;
+  clearInterval(upsellTimer);
+  upsellTimer = setInterval(() => {
+    secondsLeft--;
+    elapsed++;
+    const clock = $("upsell-clock");
+    if (!clock) { clearInterval(upsellTimer); return; }
+    if (elapsed % 17 === 0) {
+      secondsLeft = 600;
+      $("upsell-extended").textContent = "…offer extended. Please.";
+      setTimeout(() => { const e = $("upsell-extended"); if (e) e.textContent = ""; }, 4000);
+    }
+    clock.textContent = `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, "0")}`;
+  }, 1000);
+
+  $("upsell-buy").onclick = () => { clearInterval(upsellTimer); showCheckoutFailure(); };
   $("upsell-no").onclick = () => {
+    clearInterval(upsellTimer);
     showDialog(`
       <div class="dlg-mac">
         <div class="dlg-head">
@@ -497,6 +844,83 @@ function showCheckoutFailure() {
 }
 
 // ---------------------------------------------------------------
+// Tip of the Day
+// ---------------------------------------------------------------
+const TIPS = [
+  "Save early, save often. Saving crashes the app, but the habit is good.",
+  "You can draw a square by dragging in any direction. The direction is a lie; the square is real.",
+  "Pressing ⌘Z undoes your last square. Pressing it 40,000 times does not undo your subscription. We checked.",
+  "The greyed-out tools are not broken. They are aspirational.",
+  "Professionals hold their breath while autosave runs. You will learn to do this too.",
+  "SquareWorks 2027 fixes the issue where SquareWorks 2026 exists.",
+  "If the app freezes, try waiting. If waiting fails, try waiting angrily.",
+  "A rectangle is just a square with commitment issues. Stay strong.",
+  "Our keyboard shortcuts were designed by someone with three hands. We miss him.",
+];
+let tipIndex = Math.floor(Math.random() * TIPS.length);
+
+function showTipOfTheDay() {
+  showDialog(`
+    <div class="dlg-mac">
+      <div class="dlg-head">
+        <div class="dlg-icon">💡</div>
+        <div class="dlg-text" style="flex:1">
+          <h3>Tip of the Day</h3>
+          <p id="tip-text">${TIPS[tipIndex % TIPS.length]}</p>
+          <p class="fine">
+            <label><input type="checkbox" checked disabled> Show tips at startup (this checkbox is decorative)</label>
+          </p>
+        </div>
+      </div>
+      <div class="dlg-buttons">
+        <button class="btn" id="tip-next">Next Tip</button>
+        <button class="btn primary" id="tip-close">Start Drawing Squares</button>
+      </div>
+    </div>`);
+  $("tip-next").onclick = () => {
+    tipIndex++;
+    $("tip-text").textContent = TIPS[tipIndex % TIPS.length];
+  };
+  $("tip-close").onclick = closeDialog;
+}
+
+// ---------------------------------------------------------------
+// Squarey, the assistant nobody asked for
+// ---------------------------------------------------------------
+const SQUAREY_LINES = {
+  rectangle: [
+    "Hi! I'm Squarey! It looks like you're trying to draw a Rectangle. I've corrected it to a Square. You're welcome!",
+    "Rectangle detected. Neutralized. This incident has been logged with the Geometry Compliance Team.",
+    "I saw that. Four unequal sides? In THIS economy? Fixed it for you.",
+  ],
+  lonely: [
+    "That square looks lonely. Draw another one. Squares are social creatures.",
+    "Nice square! Fun fact: in SquareWorks 2027, squares can have up to FIVE corners. (Pre-order now.)",
+  ],
+  idle: [
+    "You've stopped drawing. Is everything okay? Is it something I said?",
+    "While you're thinking: have you considered pre-ordering SquareWorks 2027? No pressure. (Some pressure.)",
+  ],
+};
+let squareyTimer = null;
+
+function showSquarey(category) {
+  const el = $("squarey");
+  $("squarey-text").textContent = pick(SQUAREY_LINES[category]);
+  show(el);
+  clearTimeout(squareyTimer);
+  squareyTimer = setTimeout(() => hide(el), 9000);
+  $("squarey-dismiss").onclick = () => {
+    $("squarey-text").textContent = "Understood! I'll be back in a bit. (I am contractually unable to leave forever.)";
+    squareyTimer = setTimeout(() => hide(el), 2500);
+  };
+  $("squarey-thanks").onclick = () => {
+    $("squarey-text").textContent = "You're the first person to ever thank me. I'm telling the whole dev team about this.";
+    squareyTimer = setTimeout(() => hide(el), 3500);
+  };
+}
+
+// ---------------------------------------------------------------
 // The actual "app" — square tool only
 // ---------------------------------------------------------------
 const BASIC_TOOLS = [
@@ -530,6 +954,11 @@ const GREYED_EXCUSES = [
   (n) => `The ${n} crashed so often we removed it for your safety.`,
   (n) => `The ${n} is exclusive to users who never actually open the app.`,
   (n) => `Our lawyers have advised us not to let you use the ${n}.`,
+  (n) => `The ${n} works fine on the developer's machine. You are not on the developer's machine.`,
+  (n) => `The ${n} is in beta. It has been in beta since 2011.`,
+  (n) => `The engineer who understood the ${n} left in 2019. We're afraid to touch it.`,
+  (n) => `The ${n} conflicts with the Square Tool, and we know which side we're on.`,
+  (n) => `Using the ${n} voids your warranty, which — checking — you don't have anyway. Still no.`,
 ];
 
 function buildPalettes() {
@@ -632,6 +1061,7 @@ const MENUS = {
   tools: [
     { label: "All 312 tools", enabled: false },
     { sep: true },
+    { label: "Square AI (Beta) ✨", enabled: true, action: runSquareAI },
     { label: "Report a Bug", enabled: true, action: () => toast("Bug reported. It has been assigned to Service Pack " + (state.servicePack + 1) + ".") },
   ],
   text: [
@@ -647,7 +1077,11 @@ const MENUS = {
   ],
   help: [
     { label: "SquareWorks Help", enabled: true, action: () => toast("Help documentation last updated for SquareWorks 12.5 (2007). Most of it still applies, sadly.") },
-    { label: "What's New in 2026", enabled: true, action: () => toast("What's new: the crashes are 8% faster.") },
+    { label: "What's New in 2026", enabled: true, action: showChangelog },
+    { label: "Community Forum", enabled: true, action: () => toast("Redirecting to a thread from 2014 marked [SOLVED] that does not contain a solution.") },
+    { label: "Contact Support", enabled: true, action: () => toast("Estimated wait time: 4 business years. Your call is important to us (statement not audited).") },
+    { label: "Visit www.squareworks.pro", enabled: true, action: () => toast("Opening www.squareworks.pro… connection timed out. Try again in SquareWorks 2027.") },
+    { label: "Summon Squarey", enabled: true, action: () => showSquarey("idle") },
     { sep: true },
     { label: "Upgrade to SquareWorks 2027…", enabled: true, action: () => showUpsell() },
   ],
@@ -699,6 +1133,113 @@ function setupMenus() {
     hide(dropdown);
     document.querySelectorAll(".menu-item").forEach((m) => m.classList.remove("open"));
   }
+}
+
+// ---------------------------------------------------------------
+// Square AI (Beta) — artificial intelligence, natural disappointment
+// ---------------------------------------------------------------
+async function runSquareAI() {
+  if (state.squaresUsedThisMonth >= state.monthlySquareLimit) {
+    showPaywall();
+    return;
+  }
+  showDialog(`
+    <div class="dlg-mac">
+      <div class="dlg-head">
+        <div class="dlg-icon sales">✨</div>
+        <div class="dlg-text" style="flex:1">
+          <h3>Square AI is thinking…</h3>
+          <div class="dlg-progress">
+            <div class="progress-track"><div class="progress-fill" id="ai-fill"></div></div>
+            <div class="progress-label" id="ai-label">Prompting…</div>
+          </div>
+        </div>
+      </div>
+    </div>`);
+  const stages = [
+    [15, "Prompting…"],
+    [32, "Reasoning about corners…"],
+    [51, "Consulting a training set of 4.7 billion squares…"],
+    [68, "Hallucinating a pentagon…"],
+    [84, "De-hallucinating…"],
+    [97, "Double-checking it's not a rectangle (it tried)…"],
+  ];
+  for (const [pct, msg] of stages) {
+    const fill = $("ai-fill");
+    if (!fill) return; // dialog was replaced by a crash, which is on brand
+    fill.style.width = pct + "%";
+    $("ai-label").textContent = msg;
+    await sleep(rand(500, 900));
+  }
+  closeDialog();
+
+  // The AI produces… a square. In the middle. Like you would have.
+  const size = Math.round(rand(80, 160));
+  const sq = {
+    x: canvas.width / 2 - size / 2 + rand(-60, 60),
+    y: canvas.height / 2 - size / 2 + rand(-40, 40),
+    size,
+  };
+  squares.push(sq);
+  selectedSquare = sq;
+  state.squaresDrawn++;
+  state.squaresUsedThisMonth++;
+  $("status-squares").textContent = `Squares drawn: ${state.squaresDrawn}`;
+  updateQuotaStatus();
+  updateAutosaveStatus();
+  updateObjectInfo();
+  redraw();
+  toast("Square AI generated 1 square. Energy used: enough to toast 4 slices of bread. It counts against your quota.", 6000);
+
+  if (state.squaresDrawn >= state.crashAfterSquares) {
+    setTimeout(inAppCrash, rand(700, 1600));
+  }
+}
+
+// ---------------------------------------------------------------
+// What's New in 2026
+// ---------------------------------------------------------------
+function showChangelog() {
+  showDialog(`
+    <div class="dlg-mac" style="width: 500px">
+      <div class="dlg-head">
+        <div class="dlg-icon">📋</div>
+        <div class="dlg-text" style="flex:1">
+          <h3>What's New in SquareWorks 2026 Update 2</h3>
+          <div class="eula-scroll" style="height: 200px">
+            <h4>NEW</h4>
+            <ul>
+              <li>Squares are now four-sided by default (previously: by accident).</li>
+              <li>Square AI (Beta): generates the square you were about to draw, slower.</li>
+              <li>New crash dialogs in 5 exciting flavours. Collect them all.</li>
+            </ul>
+            <h4>IMPROVED</h4>
+            <ul>
+              <li>Crash dialogs now load 8% faster, dramatically improving overall time-to-crash.</li>
+              <li>The splash screen now freezes at a more cinematic moment.</li>
+              <li>Autosave is more decisive.</li>
+            </ul>
+            <h4>FIXED</h4>
+            <ul>
+              <li>Fixed an issue where the application would sometimes open.</li>
+              <li>Fixed a typo in a crash log nobody will ever read. We care.</li>
+              <li>Fixed the Fix for the previous Fix (see: Service Pack 1).</li>
+            </ul>
+            <h4>REMOVED</h4>
+            <ul>
+              <li>The Line tool (a square with two sides missing — lazy).</li>
+              <li>Hope.</li>
+            </ul>
+            <h4>KNOWN ISSUES</h4>
+            <ul>
+              <li>Yes.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="dlg-buttons"><button class="btn primary" id="changelog-ok">Inspiring</button></div>
+    </div>`);
+  $("changelog-ok").onclick = closeDialog;
 }
 
 function quitCrash() {
@@ -801,6 +1342,10 @@ function normalizeDrag(d) {
 }
 
 canvas.addEventListener("mousedown", (e) => {
+  if (state.squaresUsedThisMonth >= state.monthlySquareLimit) {
+    showPaywall();
+    return;
+  }
   const rect = canvas.getBoundingClientRect();
   drag = { sx: e.clientX - rect.left, sy: e.clientY - rect.top, cx: e.clientX - rect.left, cy: e.clientY - rect.top, wasRect: false };
 });
@@ -838,15 +1383,31 @@ canvas.addEventListener("mouseup", () => {
   squares.push(sq);
   selectedSquare = sq;
   state.squaresDrawn++;
+  state.squaresUsedThisMonth++;
   $("status-squares").textContent = `Squares drawn: ${state.squaresDrawn}`;
+  updateQuotaStatus();
+  updateAutosaveStatus();
   updateObjectInfo();
   redraw();
+
+  if (state.squaresUsedThisMonth >= state.monthlySquareLimit) {
+    setTimeout(showPaywall, 500);
+    return;
+  }
+  if (state.squaresUsedThisMonth === state.monthlySquareLimit - 2) {
+    toast("Heads up: only 2 squares left in your monthly Starter allowance. Spend them wisely.", 5000);
+  }
 
   if (wasRect && !warnedAboutRectangles) {
     warnedAboutRectangles = true;
     toast("Input constrained to square. Rectangles™ are a SquareWorks 2027 Pro feature ($499/yr add-on).", 5000);
+    showSquarey("rectangle");
+  } else if (wasRect) {
+    showSquarey("rectangle");
   } else if (state.squaresDrawn === 3) {
     toast("You're on fire! Three squares. That's a productive day in SquareWorks.");
+  } else if (state.squaresDrawn === 4) {
+    showSquarey("lonely");
   }
 
   // The inevitable
@@ -854,6 +1415,49 @@ canvas.addEventListener("mouseup", () => {
     setTimeout(inAppCrash, rand(700, 1600));
   }
 });
+
+function updateQuotaStatus() {
+  const left = Math.max(0, state.monthlySquareLimit - state.squaresUsedThisMonth);
+  $("status-quota").textContent = left > 0
+    ? `Plan: Starter — squares left this month: ${left}`
+    : "Plan: Starter — monthly squares exhausted (renews in 17 days)";
+}
+
+function showPaywall() {
+  showDialog(`
+    <div class="dlg-mac" style="width: 480px">
+      <div class="dlg-head">
+        <div class="dlg-icon sales">◻</div>
+        <div class="dlg-text">
+          <h3>You're out of squares.</h3>
+          <p>You've used <b>${state.monthlySquareLimit} of ${state.monthlySquareLimit}</b> squares included in your
+             <b>Starter plan</b> ($780/yr). Your allowance refreshes in <b>17 days</b>.</p>
+          <p>Upgrade to <b>Square Unlimited™</b> for unlimited* squares, priority crash dialogs,
+             and a Squarey that compliments you more often.</p>
+          <p class="fine">*Fair-use policy applies after 25 squares. Squares drawn but lost to crashes
+             still count toward your allowance. Especially those.</p>
+        </div>
+      </div>
+      <div class="dlg-buttons">
+        <button class="btn" id="paywall-wait">Live Within My Means</button>
+        <button class="btn primary" id="paywall-upgrade">Upgrade — $99/mo</button>
+      </div>
+    </div>`);
+  $("paywall-upgrade").onclick = showCheckoutFailure;
+  $("paywall-wait").onclick = () => {
+    closeDialog();
+    toast("Respect. See you in 17 days. The canvas will remain visible for browsing purposes.", 5000);
+  };
+}
+
+function updateAutosaveStatus() {
+  const remaining = state.crashAfterSquares - state.squaresDrawn;
+  const el = $("status-autosave");
+  if (remaining > 4) el.textContent = "Autosave: idle (plotting)";
+  else if (remaining > 2) el.textContent = "Autosave: warming up…";
+  else if (remaining > 0) el.textContent = "Autosave: imminent (be brave)";
+  else el.textContent = "Autosave: running. It was an honor.";
+}
 
 function undoSquare() {
   if (squares.length === 0) {
@@ -887,6 +1491,8 @@ function updateObjectInfo() {
 
 function inAppCrash() {
   state.appOpen = false;
+  state.crashCount++;
+  hide($("squarey"));
   showDialog(`
     <div class="dlg-mac">
       <div class="dlg-head">
@@ -916,18 +1522,99 @@ function openApp() {
 
   hide(splash);
   show(app);
+  hide($("squarey"));
   buildPalettes();
   updateObjectInfo();
   $("status-squares").textContent = "Squares drawn: 0";
+  updateQuotaStatus();
+  updateAutosaveStatus();
   resizeCanvas();
 
+  showTipOfTheDay();
+
   setTimeout(() => {
+    if (!state.appOpen) return;
     toast("Welcome to SquareWorks 2026! All tools are ready, except the ones that are greyed out, which is the other ones.", 6000);
-  }, 600);
+  }, 1200);
+
+  // Squarey checks in if you stop drawing (he can sense it)
+  setTimeout(() => {
+    if (state.appOpen && state.squaresDrawn < 2) showSquarey("idle");
+  }, 25000);
+
+  // Subscription re-validation: briefly stops the world to confirm you still pay
+  setTimeout(async () => {
+    if (!state.appOpen || !dialogLayer.classList.contains("hidden")) return;
+    showDialog(`
+      <div class="dlg-mac">
+        <div class="dlg-head">
+          <div class="dlg-icon">🔑</div>
+          <div class="dlg-text" style="flex:1">
+            <h3>Verifying your subscription…</h3>
+            <p id="license-check-msg">Contacting license server. Please do not draw.</p>
+          </div>
+        </div>
+      </div>`);
+    await sleep(2600);
+    const msg = $("license-check-msg");
+    if (msg) msg.innerHTML = "Your license is valid. We'll check again shortly. <i>(We don't trust you. It's not personal. It's quarterly.)</i>";
+    await sleep(2600);
+    if (!dialogBox.querySelector("#license-check-msg")) return; // something else took over
+    closeDialog();
+  }, 35000);
+
+  // The update nag arrives exactly when you're mid-thought
+  setTimeout(() => {
+    if (!state.appOpen || !dialogLayer.classList.contains("hidden")) return;
+    showDialog(`
+      <div class="dlg-mac">
+        <div class="dlg-head">
+          <div class="dlg-icon">↓</div>
+          <div class="dlg-text">
+            <h3>SquareWorks 2026 Update 3 is available!</h3>
+            <p>This update fixes the bug where Update 2 uninstalled Update 1.</p>
+            <p>It also reintroduces two issues from Update 1, for continuity.</p>
+          </div>
+        </div>
+        <div class="dlg-buttons">
+          <button class="btn" id="nag-later">Later</button>
+          <button class="btn primary" id="nag-now">Restart and Update</button>
+        </div>
+      </div>`);
+    $("nag-now").onclick = () => { state.appOpen = false; bootSequence(); };
+    $("nag-later").onclick = () => {
+      closeDialog();
+      toast("Noted. We'll ask again at a worse time.", 4000);
+    };
+  }, 60000);
 }
 
 // ---------------------------------------------------------------
-// Init
+// Guilt trip for looking at other CAD software
+// ---------------------------------------------------------------
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && state.appOpen) {
+    toast("Welcome back. We saw you looking at other CAD software. AutoCAD can't love you like we do.", 5500);
+  }
+});
+
+// ---------------------------------------------------------------
+// Cookie banner (on a desktop app, which should worry you)
+// ---------------------------------------------------------------
+function setupCookieBanner() {
+  const banner = $("cookie-banner");
+  const accept = () => {
+    banner.style.transition = "transform .3s ease-in";
+    banner.style.transform = "translateY(110%)";
+    setTimeout(() => hide(banner), 350);
+  };
+  $("cookie-accept-1").onclick = accept;
+  $("cookie-accept-2").onclick = accept;
+}
+
+// ---------------------------------------------------------------
+// Init: the EULA stands between you and disappointment
 // ---------------------------------------------------------------
 setupMenus();
-bootSequence();
+setupCookieBanner();
+showEula();

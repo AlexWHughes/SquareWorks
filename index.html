@@ -25,7 +25,7 @@
         <div class="info-row"><span class="info-label">Application Version:</span><span>2026 Update 2 (Build 841021)</span></div>
         <div class="info-row"><span class="info-label">Serial Number:</span><span>SQRE-XXXXXX-XXXXXX-4CORNERS</span></div>
         <div class="info-row"><span class="info-label">Licensed Products:</span><span>Square Suite, Squareworks</span></div>
-        <div class="info-row"><span class="info-label">License Agreement:</span><span>Click "License" on the About SquareWorks dialog box.<br>©1985-2026 by SquareWorks, Inc.<br>www.squareworks.net</span></div>
+        <div class="info-row"><span class="info-label">License Agreement:</span><span>Click "License" on the About SquareWorks dialog box.<br>©1985-2026 by SquareWorks, Inc.<br>www.squareworks.pro</span></div>
       </div>
 
       <div class="splash-status" id="splash-status">Initializing…</div>
@@ -124,10 +124,37 @@
   <div class="statusbar">
     <span id="status-hint">For Help, press F1 and pray.</span>
     <span id="status-coords">X: 0  Y: 0</span>
+    <span id="status-autosave">Autosave: idle (plotting)</span>
+    <span id="status-quota">Plan: Starter — squares left this month: 10</span>
     <span id="status-squares">Squares drawn: 0</span>
   </div>
 
   <div id="toast" class="toast hidden"></div>
+
+  <!-- Squarey, your unwanted assistant -->
+  <div id="squarey" class="squarey hidden">
+    <div class="squarey-bubble">
+      <span id="squarey-text"></span>
+      <div class="squarey-actions">
+        <button class="btn tiny" id="squarey-dismiss">Go away</button>
+        <button class="btn tiny primary" id="squarey-thanks">Thanks, Squarey</button>
+      </div>
+    </div>
+    <div class="squarey-face">
+      <div class="squarey-eyes"><span></span><span></span></div>
+      <div class="squarey-mouth"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Cookie banner. On a desktop application. Yes. -->
+<div id="cookie-banner" class="cookie-banner">
+  <span>This desktop application uses cookies. Why? Great question. We also use trackers,
+  beacons, and a man named Jürgen who writes down everything you draw.</span>
+  <div class="cookie-buttons">
+    <button class="btn tiny" id="cookie-accept-1">Accept All</button>
+    <button class="btn tiny primary" id="cookie-accept-2">Accept All (this one also accepts all)</button>
+  </div>
 </div>
 
 <!-- ======================= DIALOG LAYER ======================= -->
