@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SquareWorks Designer 2026</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='2' y='2' width='12' height='12' fill='none' stroke='black' stroke-width='2'/%3E%3C/svg%3E">
+</head>
+<body>
+
+<!-- ======================= SPLASH SCREEN ======================= -->
+<div id="splash" class="screen">
+  <div class="splash-window">
+    <div class="splash-left">
+      <div class="splash-brand">
+        <div class="splash-logo">□</div>
+        <div class="splash-wordmark">
+          <span class="wordmark-text">SQUAREWORKS<sup>®</sup></span>
+          <span class="wordmark-sub">A SQUAREMETSCHEK COMPANY</span>
+        </div>
+      </div>
+
+      <div class="splash-info">
+        <div class="info-row"><span class="info-label">Application Version:</span><span>2026 Update 2 (Build 841021)</span></div>
+        <div class="info-row"><span class="info-label">Serial Number:</span><span>SQRE-XXXXXX-XXXXXX-4CORNERS</span></div>
+        <div class="info-row"><span class="info-label">Licensed Products:</span><span>Square Suite, Squareworks</span></div>
+        <div class="info-row"><span class="info-label">License Agreement:</span><span>Click "License" on the About SquareWorks dialog box.<br>©1985-2026 by SquareWorks, Inc.<br>www.squareworks.net</span></div>
+      </div>
+
+      <div class="splash-status" id="splash-status">Initializing…</div>
+    </div>
+    <div class="splash-right">
+      <div class="splash-art" id="splash-art" title="The Quadrangle Tower — designed entirely in SquareWorks. Client was not consulted."></div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= MAIN APPLICATION ======================= -->
+<div id="app" class="screen hidden">
+  <!-- Menu bar -->
+  <div class="menubar" id="menubar">
+    <span class="menu-item apple-menu" data-menu="squareworks">■</span>
+    <span class="menu-item bold" data-menu="squareworks">SquareWorks</span>
+    <span class="menu-item" data-menu="file">File</span>
+    <span class="menu-item" data-menu="edit">Edit</span>
+    <span class="menu-item" data-menu="view">View</span>
+    <span class="menu-item" data-menu="modify">Modify</span>
+    <span class="menu-item" data-menu="model">Model</span>
+    <span class="menu-item" data-menu="aec">AEC</span>
+    <span class="menu-item" data-menu="tools">Tools</span>
+    <span class="menu-item" data-menu="text">Text</span>
+    <span class="menu-item" data-menu="window">Window</span>
+    <span class="menu-item" data-menu="cloud">Cloud</span>
+    <span class="menu-item" data-menu="help">Help</span>
+    <span class="menubar-title">Untitled 1.sqwx — SquareWorks Designer 2026</span>
+  </div>
+  <div id="menu-dropdown" class="menu-dropdown hidden"></div>
+
+  <!-- Document toolbar -->
+  <div class="doc-toolbar">
+    <span class="doc-tab">▸ Untitled 1.sqwx</span>
+    <select disabled title="Upgrade to SquareWorks 2027 to change layers"><option>Design Layer-1</option></select>
+    <select disabled><option>None</option></select>
+    <select disabled><option>Top/Plan</option></select>
+    <span class="toolbar-msg" id="toolbar-msg">Square Tool: Click and drag to create a square. (All other geometry sold separately.)</span>
+  </div>
+
+  <div class="app-body">
+    <!-- Left palettes -->
+    <div class="left-panel">
+      <div class="palette">
+        <div class="palette-title">Basic</div>
+        <div class="tool-grid" id="basic-tools"></div>
+      </div>
+      <div class="palette">
+        <div class="palette-title">Attributes</div>
+        <div class="attr-body">
+          <div class="attr-row"><span>Fill:</span><span class="attr-swatch white"></span><select disabled><option>Solid</option></select></div>
+          <div class="attr-row"><span>Pen:</span><span class="attr-swatch black"></span><select disabled><option>Solid</option></select></div>
+          <div class="attr-row"><span>Opacity:</span><select disabled><option>100%</option></select></div>
+          <div class="attr-row"><span>Drop Shadow:</span><select disabled><option>2027 only</option></select></div>
+        </div>
+      </div>
+      <div class="palette grow">
+        <div class="palette-title">Tool Sets</div>
+        <div class="toolset-list" id="toolset-list"></div>
+      </div>
+      <div class="palette">
+        <div class="palette-title">Snapping</div>
+        <div class="tool-grid small" id="snap-tools"></div>
+      </div>
+    </div>
+
+    <!-- Canvas -->
+    <div class="canvas-wrap" id="canvas-wrap">
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <!-- Right panel: Object Info -->
+    <div class="right-panel">
+      <div class="palette grow">
+        <div class="palette-title">Object Info</div>
+        <div class="oi-tabs"><span class="oi-tab active">Shape</span><span class="oi-tab">Data</span><span class="oi-tab">Render</span></div>
+        <div class="oi-body" id="oi-body">
+          <div class="oi-none">No Selection</div>
+        </div>
+      </div>
+      <div class="palette grow">
+        <div class="palette-title">Navigation - Sheet Layers</div>
+        <div class="sheet-list">
+          <div class="sheet-row"><span>SQ-1</span><span>SQUARES</span></div>
+          <div class="sheet-row"><span>SQ-2</span><span>MORE SQUARES</span></div>
+          <div class="sheet-row"><span>SQ-3</span><span>SQUARE DETAILS</span></div>
+          <div class="sheet-row disabled"><span>A1.1</span><span>PLANS (2027 only)</span></div>
+          <div class="sheet-row disabled"><span>A2.1</span><span>ELEVATIONS (2027 only)</span></div>
+          <div class="sheet-row disabled"><span>A3.3</span><span>SECTIONS (2027 only)</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status bar -->
+  <div class="statusbar">
+    <span id="status-hint">For Help, press F1 and pray.</span>
+    <span id="status-coords">X: 0  Y: 0</span>
+    <span id="status-squares">Squares drawn: 0</span>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+</div>
+
+<!-- ======================= DIALOG LAYER ======================= -->
+<div id="dialog-layer" class="dialog-layer hidden">
+  <div id="dialog-box"></div>
+</div>
+
+<!-- Beachball cursor for freezes -->
+<div id="beachball" class="beachball hidden"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
