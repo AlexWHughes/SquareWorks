@@ -9,6 +9,7 @@
 // ---------------------------------------------------------------
 const state = {
   launchAttempt: 0,        // how many times we've tried to boot
+  failuresBeforeOpen: null, // rolled once per visit; see shouldOpenSuccessfully()
   servicePack: 2,          // current installed SP; promises start at SP3
   upsellShown: false,
   upsellViews: 0,          // each decline lowers the price by $1
@@ -175,11 +176,19 @@ async function bootSequence() {
 }
 
 function shouldOpenSuccessfully() {
-  // Never on first launch. After the upsell has been shown, 50/50.
-  // Otherwise a slim 20% chance, as a treat.
-  if (state.launchAttempt === 1) return false;
-  if (state.upsellShown) return Math.random() < 0.5;
-  return Math.random() < 0.2;
+  // Each visit draws how many splash-screen betrayals you get. Some people
+  // walk in after the EULA; others install every service pack. Nobody is left
+  // flipping a coin on the 2027 upsell forever — that's how you lose a customer
+  // before they experience the joy of a square.
+  if (state.failuresBeforeOpen == null) {
+    const roll = Math.random();
+    if (roll < 0.2) state.failuresBeforeOpen = 0;       // in after the EULA
+    else if (roll < 0.52) state.failuresBeforeOpen = 1; // one crash, one update
+    else if (roll < 0.78) state.failuresBeforeOpen = 2; // a couple of updates
+    else if (roll < 0.94) state.failuresBeforeOpen = 3; // the service-pack tour
+    else state.failuresBeforeOpen = 4;                // the full 2027 gauntlet
+  }
+  return state.launchAttempt > state.failuresBeforeOpen;
 }
 
 // ---------------------------------------------------------------
