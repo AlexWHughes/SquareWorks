@@ -165,8 +165,23 @@
 <!-- Beachball cursor for freezes -->
 <div id="beachball" class="beachball hidden"></div>
 
-<!-- Hidden hit counter. Totals: https://hits.sh/squareworks.pro/ -->
-<img src="https://hits.sh/squareworks.pro.svg" width="1" height="1" alt="" aria-hidden="true" style="position:absolute;left:-9999px">
+<!-- Hidden visit logger: source + country. Totals: /traffic -->
+<script>
+(function () {
+  var q = new URLSearchParams();
+  var landing = new URLSearchParams(location.search);
+  q.set("ref", document.referrer || "");
+  q.set("src", landing.get("utm_source") || landing.get("ref") || "");
+  q.set("path", location.pathname);
+  var img = new Image();
+  img.alt = "";
+  img.referrerPolicy = "no-referrer";
+  img.src = "/t.gif?" + q.toString() + "&t=" + Date.now();
+})();
+</script>
+<noscript>
+  <img src="/t.gif" width="1" height="1" alt="" aria-hidden="true" style="position:absolute;left:-9999px">
+</noscript>
 
 <script src="app.js"></script>
 </body>

@@ -1,0 +1,11 @@
+{
+  "name": "squareworks",
+  "private": true,
+  "description": "SquareWorks Designer 2026",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
