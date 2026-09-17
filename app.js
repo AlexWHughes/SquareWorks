@@ -79,6 +79,33 @@ const LOADING_MESSAGES = [
   "Phoning home. Home is not answering…",
   "Contacting Right Angle Group HQ (they only take meetings at 90°)…",
   "Applying subscription guilt…",
+  "Asking the cloud if you're still allowed to draw…",
+  "Warming up the crash reporter. It likes to stretch…",
+  "Counting the corners. There are four. Invoice attached…",
+  "Hiding the one toolbar that was useful…",
+  "Loading the Ribbon. Please wait while it loads the Ribbon…",
+  "Calibrating Undo (capacity: 1, temperament: spiteful)…",
+  "Confirming circles are still a premium feature. They are…",
+  "Installing a plugin from 2009 that 'just works'…",
+  "Telemetry handshake complete. We already know the click…",
+  "Allocating 4 GB of RAM to this splash screen…",
+  "Importing AutoCAD layers. They're all called Layer1…",
+  "Checking whether a square is a rectangle. Legal says 400 pages…",
+  "Disabling File > Save As. Ambition is a billed add-on…",
+  "Inflating the progress bar independently of progress…",
+  "Loading BIM objects. They're cubes. Close enough…",
+  "Preparing to forget your last autosave…",
+  "Scanning for competing software. Found a ruler. Reporting you…",
+  "Consulting the 1985 source code. It was already like this…",
+  "Determining which 3 of 4 corners you're licensed for today…",
+  "Rendering a preview of a square you haven't drawn yet…",
+  "Loading Help. 404. This is considered a successful load…",
+  "Reassuring investors that this launch will succeed…",
+  "Enabling Dark Mode. It's greyed out, which is almost dark…",
+  "Buffering the buffer that buffers the buffer…",
+  "Compiling features you'll miss from the 2012 perpetual license…",
+  "Optimizing the GPU for a shape with no curves…",
+  "Refreshing What's New. Spoiler: the price…",
   "Loading Squareware…",
 ];
 
@@ -150,19 +177,24 @@ async function bootSequence() {
 
   const status = $("splash-status");
   // A fresh random sample of miseries each boot, always ending on Squareware
-  const sample = [...LOADING_MESSAGES.slice(0, -1)].sort(() => Math.random() - 0.5).slice(0, 6);
+  const sample = [...LOADING_MESSAGES.slice(0, -1)].sort(() => Math.random() - 0.5).slice(0, 8);
   for (const msg of sample) {
     status.textContent = msg;
-    await sleep(rand(350, 750));
+    await sleep(rand(320, 620));
   }
 
-  // Always freezes on "Loading Squareware…" for dramatic effect
+  // Always lands on "Loading Squareware…" for dramatic effect
   status.textContent = "Loading Squareware…";
   await sleep(900);
 
   if (shouldOpenSuccessfully()) {
-    status.textContent = "Loading Squareware… done?! (nobody is more surprised than us)";
-    await sleep(1400);
+    status.textContent = pick([
+      "Loading Squareware… done?! (nobody is more surprised than us)",
+      "Loading Squareware… unexpectedly successful.",
+      "Loading Squareware… the auditors will want a word.",
+      "Loading Squareware… please don't get used to this.",
+    ]);
+    await sleep(1200);
     openApp();
   } else {
     // freeze, beachball, then crash

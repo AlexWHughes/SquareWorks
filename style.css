@@ -69,7 +69,7 @@ html, body {
 .info-label { width: 130px; text-align: right; margin-right: 8px; flex-shrink: 0; color: #333; }
 .info-row span:last-child { color: #1a3f7a; }
 
-.splash-status { margin-top: 26px; font-size: 12px; color: #333; min-height: 16px; }
+.splash-status { margin-top: 26px; font-size: 12px; color: #333; min-height: 32px; line-height: 1.35; }
 
 .splash-right { width: 355px; padding: 12px; display: flex; }
 
